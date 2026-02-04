@@ -5,6 +5,7 @@ import { analyzeProgress } from '@/lib/school-engine';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+export const dynamic = 'force-dynamic';
 
 export default function ParentDashboard() {
 
