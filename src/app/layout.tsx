@@ -1,16 +1,14 @@
-// src/app/layout.tsx
+import './globals.css';
+import type { ReactNode } from 'react';
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode;
 }) {
   return (
     <html lang="en">
-      <body>
-        {/* This is where your pages (Student, Teacher, etc.) are injected */}
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
-  )
+  );
 }
