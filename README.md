@@ -1,36 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nexus Ed
+
+Nexus Ed is a role-based school platform built with Next.js, React, and Supabase. It includes student, teacher, parent, and admin flows centered around enrollment, classroom chat, academic progress tracking, and downloadable report cards.
+
+## Highlights
+
+- Student login and dashboard flows
+- Teacher enrollment with generated student IDs
+- Teacher marks upload for assessment tracking
+- Student progress charts with lightweight AI-style insights
+- Parent portal with child lookup and PDF report card export
+- Admin teacher management UI
+- Supabase-backed authentication and database access
+
+## Tech Stack
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Supabase
+- Recharts
+- jsPDF + `jspdf-autotable`
+- Lucide React
+
+## Project Structure
+
+```text
+src/
+  app/
+    api/chat/route.ts                  # Chat message API
+    dashboard/
+      admin/teachers/page.tsx          # Admin teacher management
+      parent/page.tsx                  # Parent portal and report export
+      student/chat/page.tsx            # Student classroom chat
+      student/progress/page.tsx        # Student analytics page
+      teacher/enrollment/page.tsx      # Student enrollment + UID generation
+      teacher/progress/page.tsx        # Marks upload flow
+    login/page.tsx                     # Main login page
+    register/page.tsx                  # Identity verification screen
+    page.tsx                           # Landing page
+  components/
+    ProgressGraph.tsx
+  lib/
+    school-engine.ts                   # UID + progress insight helpers
+    supabase.ts                        # Supabase client
+```
+
+## Main Routes
+
+- `/` - Landing page
+- `/login` - User login
+- `/register` - Identity verification / onboarding
+- `/dashboard/student/chat` - Student chat view
+- `/dashboard/student/progress` - Student performance analytics
+- `/dashboard/teacher/enrollment` - Teacher enrollment flow
+- `/dashboard/teacher/progress` - Teacher marks upload
+- `/dashboard/parent` - Parent dashboard and PDF report
+- `/dashboard/admin/teachers` - Admin teacher management
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment variables
+
+Create a `.env.local` file in the project root:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 3. Start the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supabase Notes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app currently expects these tables:
 
-## Learn More
+- `students`
+- `assessments`
+- `messages`
 
-To learn more about Next.js, take a look at the following resources:
+Example usage in the codebase:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `students` stores enrolled student details including `full_name`, `roll_number`, `unique_id`, and `class_id`
+- `assessments` stores marks with fields like `student_id`, `score`, `subject`, and `timestamp`
+- `messages` stores classroom chat messages with fields like `text` and `class_id`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Authentication and Route Protection
 
-## Deploy on Vercel
+- Client-side login is handled through Supabase auth
+- `src/middleware.ts` protects `/dashboard/*` routes and redirects unauthenticated users to `/login`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## AI / Analytics Logic
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The lightweight analytics logic lives in [`src/lib/school-engine.ts`](/Users/likhiththejas/Documents/Nexus-ed%20mobile/src/lib/school-engine.ts). It currently:
+
+- Generates student unique IDs
+- Produces rule-based progress insights from assessment trends
+- Returns status colors for score ranges
+
+## Scripts
+
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
+
+## Current State
+
+This project is a functional prototype and several flows are still UI-first:
+
+- Some dashboards use placeholder or minimal data handling
+- The chat page UI is scaffolded but not fully implemented
+- Role-based post-login routing is not yet differentiated
+- Supabase credentials should be supplied through environment variables for deployment
+
+## License
+
+Private project.
