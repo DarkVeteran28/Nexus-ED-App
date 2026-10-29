@@ -1,5 +1,6 @@
 import './globals.css';
 import type { ReactNode } from 'react';
+import { AuthRecoveryRedirect } from '@/components/auth-recovery-redirect';
 
 export default function RootLayout({
   children,
@@ -8,7 +9,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AuthRecoveryRedirect />
+        {children}
+      </body>
     </html>
   );
 }

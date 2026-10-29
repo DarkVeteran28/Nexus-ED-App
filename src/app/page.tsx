@@ -161,6 +161,9 @@ export default function LandingPage() {
               onMouseLeave={e=>(e.currentTarget.style.color='rgba(255,255,255,.6)')}>
               Sign In
             </Link>
+            <Link href="/demo" style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:14, fontWeight:600, color:'rgba(255,255,255,.9)', padding:'8px 16px', borderRadius:99, textDecoration:'none', border:'1px solid rgba(255,255,255,.15)' }}>
+              Try Demo
+            </Link>
             <Link href="/register" style={{ position:'relative', fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700, letterSpacing:'.04em', padding:'10px 24px', borderRadius:99, textDecoration:'none', color:'#fff', background:'linear-gradient(135deg,#f97316,#ec4899,#8b5cf6)', overflow:'hidden', transition:'transform .2s, box-shadow .2s' }}
               onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.05)'; e.currentTarget.style.boxShadow='0 0 30px rgba(236,72,153,.5)'; }}
               onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='none'; }}>
@@ -230,6 +233,9 @@ export default function LandingPage() {
               onMouseEnter={e=>{ e.currentTarget.style.background='rgba(255,255,255,.1)'; e.currentTarget.style.borderColor='rgba(255,255,255,.25)'; e.currentTarget.style.color='#fff'; e.currentTarget.style.transform='translateY(-2px)'; }}
               onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,.12)'; e.currentTarget.style.color='rgba(255,255,255,.8)'; e.currentTarget.style.transform='translateY(0)'; }}>
               Create Free Account
+            </Link>
+            <Link href="/demo" style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:14, letterSpacing:'.05em', padding:'14px 36px', borderRadius:99, textDecoration:'none', color:'#fff', border:'1px solid rgba(255,255,255,.22)', background:'rgba(255,255,255,.08)', transition:'all .2s' }}>
+              Explore Demo
             </Link>
           </div>
 

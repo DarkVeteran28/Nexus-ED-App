@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
 import { dashboardForRole, isSupportedRole, type AppRole } from '@/lib/route-access.mjs';
 
@@ -53,6 +54,9 @@ export default function LoginPage() {
       <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
         <h1 className="mb-2 text-center text-2xl font-bold text-slate-900">Nexus Ed Portal</h1>
         <p className="mb-6 text-center text-sm text-slate-600">Sign in with your school account.</p>
+        <Link href="/demo" className="mb-6 block rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100">
+          Explore the interactive demo without signing in →
+        </Link>
 
         <div aria-label="Choose account role" className="mb-6 grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1">
           {roles.map((item) => (
@@ -95,6 +99,11 @@ export default function LoginPage() {
               onChange={(event) => setPassword(event.target.value)}
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
+            <div className="mt-2 text-right">
+              <Link href="/forgot-password" className="text-sm font-medium text-blue-700 underline-offset-4 hover:underline">
+                Forgot password?
+              </Link>
+            </div>
           </div>
           {message && <p role="alert" className={`rounded-lg p-3 text-sm ${isError ? 'bg-red-50 text-red-800' : 'bg-emerald-50 text-emerald-800'}`}>{message}</p>}
           <button
