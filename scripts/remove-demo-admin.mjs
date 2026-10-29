@@ -1,12 +1,13 @@
+import './load-local-env.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { findUserByEmail, isRemovableDemoAdmin, normalizeEmail } from './demo-admin-helpers.mjs';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const serviceRoleKey = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
 const email = normalizeEmail(process.argv[2]);
 
 if (!url || !serviceRoleKey || !email) {
-  throw new Error('Usage: NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/remove-demo-admin.mjs demo-admin@example.edu');
+  throw new Error('Usage: NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SECRET_KEY=... node scripts/remove-demo-admin.mjs demo-admin@example.edu');
 }
 
 const supabase = createClient(url, serviceRoleKey, {

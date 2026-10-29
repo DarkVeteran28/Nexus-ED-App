@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
+import { validateRegistrationDetails } from '@/lib/registration-validation.mjs';
 
-const supportedRoles = new Set(['student', 'teacher', 'parent']);
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
@@ -12,24 +12,10 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Request must be valid JSON.' }, { status: 400 });
   }
-  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Registration details are required.' }, { status: 400 });
+  const parsed = validateRegistrationDetails(body);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const { role, email, password, fullName, code, rollNumber } = parsed.value;
 
-  const values = body as Record<string, unknown>;
-  const role = values.role;
-  const email = typeof values.email === 'string' ? values.email.trim().toLowerCase() : '';
-  const password = typeof values.password === 'string' ? values.password : '';
-  const fullName = typeof values.fullName === 'string' ? values.fullName.trim() : '';
-  const code = typeof values.registrationCode === 'string' ? values.registrationCode.trim() : '';
-  const rollNumber = Number(values.rollNumber);
-
-  if (typeof role !== 'string' || !supportedRoles.has(role)) return NextResponse.json({ error: 'Choose a supported account role.' }, { status: 400 });
-  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
-  if (password.length < 12 || password.length > 128) return NextResponse.json({ error: 'Use a password between 12 and 128 characters.' }, { status: 400 });
-  if (fullName.length < 2 || fullName.length > 160) return NextResponse.json({ error: 'Enter your full name.' }, { status: 400 });
-  if (code.length < 20 || code.length > 100) return NextResponse.json({ error: 'Enter the complete school-issued registration code.' }, { status: 400 });
-  if ((role === 'student' || role === 'parent') && (!Number.isSafeInteger(rollNumber) || rollNumber < 1)) {
-    return NextResponse.json({ error: 'Enter the roll number on the school record.' }, { status: 400 });
-  }
 
   let admin: ReturnType<typeof createSupabaseAdminClient>;
   try {

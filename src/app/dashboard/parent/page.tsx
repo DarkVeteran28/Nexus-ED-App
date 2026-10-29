@@ -7,7 +7,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 export const dynamic = 'force-dynamic';
 
-type Student = { full_name: string; unique_id: string; class_id: string };
+type Student = { id: string; full_name: string; unique_id: string; class_id: string };
 type Mark = { unit: string; score: number };
 
 export default function ParentDashboard() {
@@ -71,7 +71,7 @@ const downloadReportCard = () => {
     try {
       const { data: student, error: studentError } = await getSupabaseBrowserClient()
         .from('students')
-        .select('full_name, unique_id, class_id')
+        .select('id, full_name, unique_id, class_id')
         .eq('unique_id', childId.trim())
         .eq('roll_number', parseInt(childRoll, 10))
         .single();
@@ -81,7 +81,7 @@ const downloadReportCard = () => {
       const { data: scores, error: scoresError } = await getSupabaseBrowserClient()
         .from('assessments')
         .select('score, timestamp')
-        .eq('student_id', childId.trim())
+        .eq('student_id', student.id)
         .order('timestamp', { ascending: true });
       if (scoresError) throw scoresError;
       setMarks(scores?.map((score, index) => ({ unit: `Test ${index + 1}`, score: score.score })) ?? []);
@@ -117,8 +117,8 @@ const downloadReportCard = () => {
             onChange={(e) => setChildRoll(e.target.value)}
             required
           />
-          <button className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition">
-            {loading ? "Verifying..." : "View Progress"}
+          <button disabled={loading} className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition">
+            {loading ? "Loading…" : "View Progress"}
           </button>
           {message && <p role="alert" className="text-sm text-red-700">{message}</p>}
         </form>

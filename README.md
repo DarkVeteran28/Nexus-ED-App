@@ -1,142 +1,88 @@
 # Nexus Ed
 
-Nexus Ed is a role-based school platform built with Next.js, React, and Supabase. It includes student, teacher, parent, and admin flows centered around enrollment, classroom chat, academic progress tracking, and downloadable report cards.
+Nexus Ed is a role-based school platform built with Next.js, React, and Supabase. It includes student, teacher, parent, and admin workflows for enrollment, classroom messages, academic progress, and downloadable report cards.
 
-## Highlights
+## What works in this checkout
 
-- Student login and dashboard flows
-- Teacher enrollment with generated student IDs
-- Teacher marks upload for assessment tracking
-- Student progress charts with lightweight AI-style insights
-- Parent portal with child lookup and PDF report card export
-- Admin teacher management UI
-- Supabase-backed authentication and database access
+- Role-aware Supabase email/password login with visible, validated fields.
+- Cookie-backed dashboard access checks and sign-out.
+- A server-side registration endpoint that verifies one-time school codes before activating student, parent, or teacher accounts.
+- Teacher enrollment that creates a student record and one-time activation codes.
+- Assessment entry by student ID, school-scoped progress reads, parent-child linked report views, and PDF export.
+- Admin teacher invitations, class assignment, and revocation through protected server routes.
+- A Supabase schema and Row Level Security migration for the supported workflows.
+- A guarded demo-admin provisioning/removal script.
 
-## Tech Stack
+These workflows require a configured Supabase project and the migration below. They have not been exercised against an external project in this workspace.
 
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- Supabase
-- Recharts
-- jsPDF + `jspdf-autotable`
-- Lucide React
+## Stack and routes
 
-## Project Structure
+- Next.js 16, React 19, TypeScript, Tailwind CSS 4
+- Supabase Auth, Postgres, and Row Level Security
+- Recharts, jsPDF, and `jspdf-autotable`
 
-```text
-src/
-  app/
-    api/chat/route.ts                  # Chat message API
-    dashboard/
-      admin/teachers/page.tsx          # Admin teacher management (prototype UI)
-      parent/page.tsx                  # Parent portal and report export
-      student/chat/page.tsx            # Student classroom chat
-      student/progress/page.tsx        # Student analytics page
-      teacher/enrollment/page.tsx      # Student enrollment + UID generation
-      teacher/progress/page.tsx        # Marks upload flow
-    (auth)/login/page.tsx              # Supabase email/password login
-    (auth)/register/page.tsx           # Registration-code screen (verification pending)
-    page.tsx                           # Landing page
-  components/
-    ProgressGraph.tsx
-  lib/
-    school-engine.ts                   # UID + rule-based progress insight helpers
-    supabase.ts                        # Browser Supabase client
-scripts/
-  provision-demo-admin.mjs             # Explicit, guarded demo admin provisioning
-  remove-demo-admin.mjs                # Removes only a marked demo admin
-```
+Main routes: `/`, `/login`, `/register`, `/dashboard/student/chat`, `/dashboard/student/progress`, `/dashboard/teacher/enrollment`, `/dashboard/teacher/progress`, `/dashboard/parent`, and `/dashboard/admin/teachers`.
 
-## Main Routes
+## Run locally
 
-- `/` - Landing page
-- `/login` - User login
-- `/register` - Identity verification / onboarding
-- `/dashboard/student/chat` - Student chat view
-- `/dashboard/student/progress` - Student performance analytics
-- `/dashboard/teacher/enrollment` - Teacher enrollment flow
-- `/dashboard/teacher/progress` - Teacher marks upload
-- `/dashboard/parent` - Parent dashboard and PDF report
-- `/dashboard/admin/teachers` - Admin teacher management
+1. Install dependencies:
 
-## Getting Started
+   ```bash
+   npm install
+   ```
 
-### 1. Install dependencies
+2. Create a Supabase project and apply [`supabase/migrations/202610290001_nexus_ed_core.sql`](supabase/migrations/202610290001_nexus_ed_core.sql) in the Supabase SQL editor. Use a new demo project or review the existing schema first; the migration is designed for this application schema and is not a production upgrade plan.
+
+3. Copy `.env.example` to `.env.local`. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from the Supabase project. Set the secret key locally only if using the server-side registration, enrollment, admin management, or demo provisioning features. Keep it private and never use a `NEXT_PUBLIC_` prefix.
+
+4. Create a school (the demo-admin script creates its configured demo school if it does not exist), then start Next.js:
+
+   ```bash
+   npm run dev
+   ```
+
+   Open <http://localhost:3000>.
+
+The same `.env.local` file is loaded by the demo admin scripts. It is ignored by Git. No test/demo login credentials are committed.
+
+## Demo Admin
+
+Set `DEMO_ADMIN_EMAIL` and `DEMO_ADMIN_PASSWORD` to a dedicated unused account, and optionally set `DEMO_ADMIN_SCHOOL_NAME` and `DEMO_ADMIN_SCHOOL_CODE`. After applying the migration and setting `SUPABASE_SECRET_KEY`, run:
 
 ```bash
-npm install
+npm run provision:demo-admin
 ```
 
-### 2. Configure environment variables
+The script creates or reuses the configured school and creates an Admin account with trusted `app_metadata`. It refuses to change an existing account that is not already marked as the dedicated demo Admin. No password is printed. Sign in at `/login`, select **Admin**, and open `/dashboard/admin/teachers`.
 
-Copy `.env.example` to `.env.local` and set the public Supabase project values:
+After the presentation, remove the account with:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+npm run remove:demo-admin -- demo-admin@example.edu
 ```
 
-### 3. Start the development server
+Use the same private URL and secret key. The removal script refuses accounts without both demo markers.
+
+## Account workflows
+
+- A teacher must be assigned a class by an Admin. On `/dashboard/teacher/enrollment`, enroll a student and optionally supply a guardian email. Share the generated student and parent activation codes privately with the matching users.
+- Teachers register at `/register` using the invited email and one-time code. Students and parents use their school-issued activation code, exact enrolled name/roll as applicable, and the recorded guardian email.
+- Registration codes are stored as hashes and consumed transactionally by a service-only database function.
+- Access is scoped by the authenticated school membership and class/student relationships in RLS. Use synthetic data until those rules are independently validated in the target project.
+
+## Checks
 
 ```bash
-npm run dev
-```
-
-Open `http://localhost:3000`.
-
-The service-role key shown in `.env.example` is for the explicit admin provisioning/removal scripts only. Keep it in a trusted terminal environment and never expose it to the browser or commit it.
-
-## Supabase Notes
-
-The app currently expects these tables:
-
-- `students`
-- `assessments`
-- `messages`
-
-Example usage in the codebase:
-
-- `students` stores enrolled student details including `full_name`, `roll_number`, `unique_id`, and `class_id`
-- `assessments` stores marks with fields like `student_id`, `score`, `subject`, and `timestamp`
-- `messages` stores classroom chat messages with fields like `text` and `class_id`
-
-## Authentication and Route Protection
-
-- Login uses Supabase Auth email/password. An administrator must assign the user's role in trusted `app_metadata`; roles in user-editable metadata are not accepted.
-- `src/proxy.ts` checks the Supabase session and the role required for student, teacher, parent, and admin dashboard routes.
-- Data authorization still depends on correct Supabase Row Level Security policies for the actual database schema. No schema or RLS migrations are included in this repository, so do not expose real student data until policies are reviewed and tested.
-- Registration-code validation and account activation are not connected to a registration-code table or server-side verifier yet.
-
-## AI / Analytics Logic
-
-The lightweight analytics logic lives in [`src/lib/school-engine.ts`](src/lib/school-engine.ts). It currently:
-
-- Generates student unique IDs
-- Produces rule-based progress insights from assessment trends
-- Returns status colors for score ranges
-
-## Scripts
-
-```bash
-npm run dev
+npm run lint
+npx tsc --noEmit
+npm test
 npm run build
 npm run start
-npm run lint
-npm test
 ```
 
-## Current State
+## Known limits
 
-This project remains a prototype. Teacher enrollment and marks upload call Supabase directly, but schema constraints and RLS are not included here. Student progress filters on the trusted `app_metadata.student_id` claim, which must be provisioned to match the database record. The parent portal's lookup is not a secure parent-child relationship. Admin teacher management is sample data, and chat has a basic send/read flow without realtime behavior. These flows should not be presented as fully verified or used with real student information.
-
-### Demo Admin provisioning
-
-Use a dedicated, unused account in the intended Supabase project. Set `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEMO_ADMIN_EMAIL`, and `DEMO_ADMIN_PASSWORD` in a private local shell, then run `npm run provision:demo-admin`. The script creates the account with trusted `app_metadata.role=admin` and `app_metadata.demo_account=true`, will not overwrite an existing account, and does not print the password. Sign in at `/login`, choose **Admin**, and expect `/dashboard/admin/teachers`. This process only provisions Supabase Auth; live access still depends on the deployed app using the same project and required environment variables.
-
-To remove the dedicated account after the demo, run `npm run remove:demo-admin -- demo-admin@example.edu` with the same server-only URL/key in the shell. The script refuses to delete accounts without both demo markers. No production account is created automatically on deploy.
-
-## License
-
-Private project.
+- This workspace had no configured Supabase project at the time of verification; real account activation, persistence, and RLS behavior remain unverified.
+- The chat supports saving and reading class messages, but not realtime subscriptions or syllabus-grounded AI responses.
+- Progress recommendations are deterministic rules, not generated AI.
+- A live deployment requires the same public Supabase settings and server-only `SUPABASE_SECRET_KEY` in its hosting environment. This workspace cannot verify or deploy the SSO-protected Vercel project.

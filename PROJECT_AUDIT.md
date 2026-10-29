@@ -1,94 +1,82 @@
-# Nexus-Ed project audit
+# Nexus-Ed repository audit
 
-Audit date: 2026-10-29  
-Repository: [`DarkVeteran28/Nexus-ED-App`](https://github.com/DarkVeteran28/Nexus-ED-App) matches this workspace's README, package manifest, and original login source. The workspace itself has no Git remote or commit history: branch `master` has no commits, and the supplied project files were untracked at audit start and have been preserved.
+Audit date: 2026-10-29. Source was inspected against the README and the pasted classroom-demo brief. The current checkout builds and serves locally. No `.env.local` or Supabase credentials are present, so no database-backed workflow, live authentication, RLS behavior, or deployment could be validated.
 
-## Executive result
+## Feature inventory
 
-README scope items identified: **16**. Verified complete: **0**. Partial: **12**. Not implemented: **2**. Blocked on external configuration or missing schema: **2**. The production source build passes, but authentication and data workflows against Supabase have not been verified. These counts distinguish code paths that exist from workflows that have not been exercised against a configured database.
+The README/brief yields **15 requirements**. Current evidence: **2 PASS, 9 PARTIAL, 1 NOT IMPLEMENTED, and 3 BLOCKED**.
 
-## README-to-code feature audit
-
-| README requirement | Status | Evidence and limits |
+| Requirement | Status | Evidence and remaining work |
 |---|---|---|
-| Landing page and portal navigation | PARTIAL | `src/app/page.tsx` provides the branded page and links. It also advertises AI, uptime, privacy, and role workflows that are not backed by corresponding services or verified measurements. |
-| Student authentication and dashboard | PARTIAL | Login now calls Supabase password auth, checks trusted `app_metadata.role`, and routes students. No configured project or test account was available to exercise a successful sign-in. Student record linkage is not provisioned in this repo. |
-| Teacher authentication and dashboard | PARTIAL | Teacher role is now available at login and teacher routes are guarded. Enrollment and marks UI write to expected Supabase tables, but schema, RLS, and successful writes are unavailable for verification. |
-| Parent authentication and dashboard | PARTIAL | Parent role is now guarded. The portal performs lookup using student ID and roll number; a verified parent-child relationship and tested RLS policy are absent. |
-| Admin authentication and dashboard routing | PARTIAL | Admin role route is guarded, and an explicit demo-account provisioning script is included. No admin account was created or tested. |
-| Admin teacher management | NOT IMPLEMENTED | The current page contains sample data; Add/Edit/Remove controls are disabled and no persistence endpoint exists. |
-| Role-specific post-login routing | PARTIAL | Login selects a dashboard from trusted role metadata; `src/proxy.ts` checks the role again on dashboard paths. Server/data authorization still depends on absent RLS policies. |
-| Registration-code validation/account activation | NOT IMPLEMENTED | Code and roll-number fields now render, validate as required, and show an explicit “not configured” message. No registration-code store or trusted verifier exists; the code is not accepted as proof of identity. |
-| Student classroom chat | PARTIAL | A basic class chat UI and authenticated API insert are implemented for class `10A`. Read/write access depends on the database RLS policy; the schema, history access, and live workflow were not tested. No realtime subscription is implemented. |
-| Student progress graphs and insights | PARTIAL | Progress now queries scores filtered by `app_metadata.student_id` and shows loading/error/empty states. The claim-to-record mapping, data policy, and displayed results cannot be verified without the database. Insights are rule-based, not AI-generated. |
-| Teacher student enrollment and generated IDs | PARTIAL | Existing UI writes a generated ID and student data. School code/class are hardcoded (`NEXUS`, `10A`), database behavior is unverified, and there is no collision/authorization test. |
-| Teacher assessment upload | PARTIAL | Inputs, score validation, subject selection, persistence feedback, and loading state are present. Whether the schema and RLS allow the intended teacher-to-student relationship is unknown. |
-| Parent progress and report-card PDF | PARTIAL | Parent portal queries student/assessment data and generates a jsPDF report. Authorization between parent and child is not established in this repository; layout and PDF output were not rendered or tested. |
-| Supabase-backed data and authentication | PARTIAL | Cookie-aware Supabase browser auth and the Next.js proxy are in source. No `.env.local` exists; deployment env, database, tables, and connectivity were not inspected. |
-| Secure data authorization (RLS) | BLOCKED | No SQL schema, migrations, or RLS policies exist in this checkout. The browser uses an anon key; policies must enforce access to student, assessment, and message rows. Frontend route checks alone do not secure database data. |
-| Production deployment and live behavior | BLOCKED | The provided live URL responds with HTTP 302 to Vercel SSO, so its application page could not be inspected without an authenticated browser session. The checkout has no Git remote or commit history, so Vercel’s source branch and deployed revision cannot be identified here. No deployment was performed. |
+| Local application build and production server | PASS | `npm run build` completes and `npm run start` serves pages locally. Requires no DB for public pages. |
+| Login and registration input visibility | PASS | Production HTML smoke check returned `/login` 200 with visible email/password inputs and `/register` 200 with email/roll fields. Actual browser style/mobile inspection remains unperformed. |
+| Authentication for Student, Teacher, Parent, Admin | PARTIAL | Supabase email/password login checks trusted `app_metadata.role`; successful and rejected sign-in have not been tested with real accounts. |
+| Protected routes and sign-out | PARTIAL | Next.js proxy checks user session and required role; dashboard has sign-out. Refresh, expiry, and cross-role behavior need a configured project and accounts. |
+| School-code registration and activation | PARTIAL | API validates hashed, scoped, unused invitations; database RPC binds user/student/parent/teacher records. Migration and actual activation are unverified. |
+| Teacher student enrollment | PARTIAL | Protected server route validates active teacher and class assignment, persists student, and generates hashed single-use activation codes. Requires migrated/configured Supabase. |
+| Teacher assessment upload | PARTIAL | UI resolves school student ID to UUID and inserts a bounded score under RLS. Database path is unverified. |
+| Student progress view | PARTIAL | Uses trusted student metadata and school-scoped assessment reads; no configured account/data to verify. |
+| Parent-child report and PDF | PARTIAL | Student and assessment queries are constrained by parent-child RLS; report PDF is generated in the client. Relationship and PDF layout are not live-tested. |
+| Class messaging | PARTIAL | Authenticated API validates role/class and persists messages. Realtime subscriptions and syllabus-grounded AI are absent. |
+| Admin teacher management | PARTIAL | Protected API supports teacher invitations, assignment, listing, and revocation. Requires service key and migrated DB; no live admin was provisioned. |
+| Database schema and RLS | BLOCKED | Migration now defines core tables, helper functions, trigger, and policies, but has not been applied or tested against a Supabase instance. |
+| Demo Admin account | BLOCKED | Idempotent guarded script exists and creates a dedicated school/account. No credentials/project are configured, so no account was created or verified. |
+| Deployed app and Vercel environment | BLOCKED | Supplied URL redirected to Vercel SSO. No authenticated browser session, deployment settings, or source revision was available. |
+| Syllabus-grounded AI and realtime chat | NOT IMPLEMENTED | Current insights are deterministic rules; chat stores messages without realtime or syllabus retrieval. |
 
-## Authentication and input findings
+## Defects found and fixes in source
 
-- The original login and registration components already included input elements in the checked-out source. No CSS selector in `src/app/globals.css` hid those inputs. The reported invisible-input state therefore is **not reproduced by this source**; the deployed build could not be inspected to determine whether it is stale or built from different code.
-- Login originally had no submit handler, rendered role-specific identity fields that Supabase password auth did not consume, and omitted the README-supported teacher role. It now uses visible, explicitly styled email/password inputs, required validation, accessible labels/focus states, Supabase password auth, trusted role metadata, and role-based redirect/error handling.
-- Registration originally had no submit handler. It now has explicit code and roll-number fields with readable styles and required validation. The form clearly reports that server-side activation is unavailable rather than indicating successful verification.
-- The original client Supabase module embedded a fallback project URL and anon key. These fallbacks were removed. Configuration is required through environment variables, and the service-role key is only used by explicit Node scripts.
-- Next.js `src/proxy.ts` now checks session and trusted role metadata for role-specific dashboard paths. `src/app/dashboard/layout.tsx` includes sign-out. These checks do not replace database RLS policies.
-- Chat API now requires a valid session, limits payload shape/size, checks student/teacher role, and returns appropriate HTTP errors. The database insert remains subject to RLS.
+- The checkout had unresolved merge-conflict markers in package metadata and many app files. The working copies were resolved to the implementation side, and the Git index was updated so no unmerged paths remain. The files are syntactically clean and build successfully.
+- Login source had invisible-field complaints in the original deployment, but no hiding CSS was found. The current login and registration components render accessible, styled email/password/name/roll/code fields. Production HTML confirms the fields exist; this does not prove the SSO-protected deployment serves this source revision.
+- Login now uses Supabase email/password and trusted role metadata instead of a frontend-only mock.
+- Account registration, teacher enrollment, and Admin teacher management now have server-side paths using a server-only service key. The service key is not imported into client modules.
+- Data access uses school/student/class policies. Enrollment and invitation codes are stored only as SHA-256 hashes and one-time registration is consumed in a service-only transaction.
+- Legacy `src/middleware.ts` was removed in favor of the Next.js 16 `src/proxy.ts` implementation.
 
 ## Security and deployment risks
 
-1. **High: no schema/RLS available.** Student and assessment queries could expose or modify other users' records if the Supabase project lacks strict policies. The parent identity lookup is not a substitute for a parent-child relationship.
-2. **High: no deployment credentials/config evidence.** Supabase project URL/key, database access, Vercel environment, and deployment tracking branch were not available to this checkout.
-3. **Role claims require trusted provisioning.** Login and middleware rely on Supabase `app_metadata.role`; student progress additionally requires `app_metadata.student_id`. User-editable metadata must not be used to grant roles.
-4. **Feature claims exceed implementation.** “AI” insights are deterministic heuristics; the chat is not syllabus-grounded; admin teacher management is sample-only; and advertised realtime/uptime claims are not verified.
-5. **Supply-chain audit incomplete.** `npm install` reported 20 advisories (1 low, 4 moderate, 13 high, 2 critical). `npm audit --omit=dev` could not reach `registry.npmjs.org`, so package-specific exposure and remediation were not verified.
-6. **Deployment root ambiguity corrected locally.** Next.js initially inferred `/Users/likhiththejas` due another lockfile; `next.config.ts` now pins Turbopack root to this repository. No Vercel deployment config was present.
-7. **Live URL is access-controlled.** A request to the provided `/login` URL returned HTTP 302 to Vercel SSO. The page and deployed source revision could not be inspected without an authenticated browser session.
-8. **GitHub source identified.** `DarkVeteran28/Nexus-ED-App` on `main` has the same README, `package.json`, and original login component as this workspace. The workspace is not a clone with a configured origin, so no direct branch or revision relationship can be verified.
+1. **Migration not applied:** do not use actual student data until the migration is reviewed and RLS tested with separate synthetic accounts.
+2. **No Supabase configuration:** `.env.local` now contains the project URL and blank key fields. API registration/admin/enrollment routes need `SUPABASE_SECRET_KEY`; browser auth also needs project URL and publishable key.
+3. **No live account tests:** role checks, cookie refresh, logout, expiry, and cross-role denial are source-implemented but not verified against Auth.
+4. **Vercel is SSO protected:** the live revision, environment variables, API connectivity, and UI could not be inspected. No deployment was attempted.
+5. **Unfinished product scope:** realtime chat and actual syllabus-grounded AI are not implemented. Progress text is heuristic and should not be marketed as generative AI.
+6. **Git metadata:** the repository index has unresolved entries and cannot be written in this environment. Before committing, resolve/stage the working files in a writable Git checkout and confirm `git status` is clean of unmerged paths.
+7. **Supply-chain audit:** prior `npm install` reported 20 advisories; registry DNS blocked the production dependency audit. Re-run `npm audit` where registry access is available and assess updates before presenting publicly.
 
-## Tests and checks
+## Verification performed
 
-- `npm install`: passed; 431 packages installed. npm reported 20 advisories and warned that install scripts for `core-js`, `sharp`, and `unrs-resolver` were not approved by its install-script policy.
-- `node --check scripts/provision-demo-admin.mjs && node --check scripts/remove-demo-admin.mjs`: passed.
-- `npm run lint`: passed after the final proxy migration with zero errors and warnings. The legacy reveal animations were changed to render content immediately to resolve React ref-hook lint errors.
-- `npm test`: passed, **6 tests / 0 failures**, covering demo-account email matching and create/remove marker guards plus role routing/access-path helpers.
-- `npm run build`: passed after the `middleware.ts` to `proxy.ts` rename and role-helper integration. The package build script is pinned to Webpack for reproducibility. It compiled, ran TypeScript, generated all 12 static pages, and emitted all documented routes.
-- `npx tsc --noEmit`: passed after the final build.
-- `node --check scripts/provision-demo-admin.mjs && node --check scripts/remove-demo-admin.mjs`: passed.
-- Static production HTML inspection confirmed login includes email/password inputs and registration includes registration-code and roll-number inputs with IDs and labels. This verifies source-rendered markup, not computed browser styles or mobile layout.
-- Live deployment request: HTTP 302 to Vercel SSO; no browser session was available to inspect after redirect. API connectivity and real authentication were not run.
-- `npm audit --omit=dev`: could not reach `registry.npmjs.org`; package-specific exposure and remediation were not verified.
-- No end-to-end browser runner or real Supabase account/database was configured.
+- `npm run lint` — passed, no warnings.
+- `npx tsc --noEmit` — passed.
+- `npm test` — passed, **9 tests / 0 failures** (role routing and guarded demo-account helper behavior).
+- `npm run build` — passed; Next.js generated the application routes and proxy.
+- `npm run start -- --hostname 127.0.0.1 --port 3010` — server started.
+- Local production HTTP smoke check: `/`, `/login`, `/register` each returned HTTP 200; login markup had email/password fields; registration markup had email/roll fields. The test used localhost with explicit sandbox approval.
+- No automated browser test, mobile visual check, Supabase migration execution, API integration test, real account test, or live deployment verification was possible without the project/session.
 
-## Prioritized completion checklist
+## Completion checklist
 
-### P0 — security and runtime
+### P0
 
-- [ ] Configure Supabase project credentials in a trusted environment and verify `app_metadata.role` provisioning.
-- [ ] Add/inspect schema and strict RLS policies for students, assessments, and messages, including student, teacher, and parent-child authorization.
-- [x] Rerun production build, type check, and lint after the final Next.js proxy migration.
-- [ ] Verify direct route access, role mismatch, logout, session refresh/expiry, and API denial against real test accounts.
-- [ ] Inspect the live deployment and identify its actual source revision/environment.
+- [x] Resolve conflict markers in the working copies and restore app buildability.
+- [x] Add trusted-role authentication, route protection, and logout source paths.
+- [x] Add registration, enrollment, Admin management, and RLS migration source.
+- [ ] Apply/review migration in the intended Supabase project and verify RLS with synthetic accounts.
+- [ ] Configure Vercel environment and verify production source revision and live role flows.
 
-### P1 — classroom demo features
+### P1
 
-- [ ] Connect and test registration-code verification and account activation while preserving school-issued codes.
-- [ ] Provision a dedicated demo Admin in the correct Supabase project, then verify live sign-in and admin dashboard.
-- [ ] Replace sample admin teacher data with authorized persisted management.
-- [ ] Verify enrollment, assessment upload, student progress, and report PDF using synthetic database records.
-- [ ] Confirm each dashboard only displays the authenticated user's authorized data.
+- [x] Replace sample-only Admin UI with invitation, assignment, listing, and revocation actions.
+- [x] Provide a guarded, repeatable demo Admin provisioning/removal path.
+- [ ] Provision and test the Admin account against the target project.
+- [ ] Test enrollment → student/parent activation → assessment → student/parent report with synthetic data.
 
-### P2 — usability and workflow
+### P2/P3
 
-- [ ] Add the missing realtime chat behavior and verify message history.
-- [ ] Replace hardcoded class and school identifiers with authorized school/class selection.
-- [ ] Run desktop/mobile browser checks for login, registration, dashboards, errors, and empty states.
-- [ ] Add automated unit, API authorization, seed-script, and browser tests using the project’s selected test framework.
+- [ ] Add realtime class messages and syllabus-grounded responses if those README claims remain in scope.
+- [ ] Run desktop/mobile browser verification and PDF visual review.
+- [ ] Re-run dependency audit when registry access is available.
+- [x] Clear the unmerged Git index entries; source changes remain uncommitted.
 
-### P3 — claims and polish
+## Next exact action
 
-- [ ] Remove or substantiate unsupported AI, realtime, uptime, and privacy marketing claims.
-- [ ] Re-run dependency audit with registry access and update affected packages safely.
-- [ ] Render and verify PDF layout and accessibility.
+Create a Supabase demo project, apply the migration, and add its project URL and publishable key to local `.env.local`. Keep the secret key private; it is needed locally for server APIs and demo provisioning. Then set unique demo Admin email/password values and run `npm run provision:demo-admin`. After that, run the synthetic end-to-end account workflows before considering the class demo ready.

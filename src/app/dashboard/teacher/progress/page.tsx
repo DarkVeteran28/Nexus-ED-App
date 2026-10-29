@@ -19,9 +19,12 @@ export default function MarksUpload() {
       if (!Number.isInteger(numericScore) || numericScore < 0 || numericScore > 100) {
         throw new Error('Enter a whole-number score from 0 to 100.');
       }
-      const { error } = await getSupabaseBrowserClient()
-        .from('assessments')
-        .insert({ student_id: studentId.trim(), score: numericScore, subject, timestamp: new Date().toISOString() });
+      const client = getSupabaseBrowserClient();
+      const { data: student, error: studentError } = await client.from('students')
+        .select('id').eq('unique_id', studentId.trim()).single();
+      if (studentError || !student) throw new Error('Student ID was not found or is outside your assigned classes.');
+      const { error } = await client.from('assessments')
+        .insert({ student_id: student.id, score: numericScore, subject, timestamp: new Date().toISOString() });
       if (error) throw error;
       setMessage('Assessment saved.');
       setIsError(false);

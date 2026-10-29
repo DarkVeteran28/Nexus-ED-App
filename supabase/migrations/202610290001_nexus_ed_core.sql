@@ -19,9 +19,25 @@ create table if not exists public.students (
   guardian_email text,
   auth_user_id uuid unique references auth.users(id) on delete set null,
   created_by uuid references auth.users(id) on delete set null default auth.uid(),
-  created_at timestamptz not null default now(),
-  unique (school_id, class_id, roll_number)
+  created_at timestamptz not null default now()
 );
+
+-- The existing Supabase project already has an empty legacy students table.
+-- Add the Nexus-Ed school/auth fields without dropping the existing columns.
+alter table public.students add column if not exists school_id uuid references public.schools(id) on delete cascade;
+alter table public.students add column if not exists guardian_email text;
+alter table public.students add column if not exists auth_user_id uuid unique references auth.users(id) on delete set null;
+alter table public.students add column if not exists created_by uuid references auth.users(id) on delete set null default auth.uid();
+alter table public.students add column if not exists created_at timestamptz not null default now();
+create unique index if not exists students_unique_id_unique_idx on public.students(unique_id);
+create unique index if not exists students_school_class_roll_idx on public.students(school_id, class_id, roll_number);
+
+do $$ begin
+  if exists (select 1 from public.students where school_id is null) then
+    raise exception 'Existing students need a school mapping before school_id can be required';
+  end if;
+  alter table public.students alter column school_id set not null;
+end $$;
 
 create table if not exists public.school_members (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -85,9 +101,24 @@ create table if not exists public.messages (
   school_id uuid not null references public.schools(id) on delete cascade,
   class_id text not null check (length(trim(class_id)) between 1 and 80),
   author_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  sender_name text not null,
   text text not null check (length(trim(text)) between 1 and 2000),
   created_at timestamptz not null default now()
 );
+
+-- Preserve the existing legacy messages.sender_name field and add scoped author data.
+alter table public.messages add column if not exists school_id uuid references public.schools(id) on delete cascade;
+alter table public.messages add column if not exists author_id uuid references auth.users(id) on delete cascade default auth.uid();
+alter table public.messages add column if not exists sender_name text;
+alter table public.messages add column if not exists created_at timestamptz not null default now();
+do $$ begin
+  if exists (select 1 from public.messages where school_id is null or author_id is null or sender_name is null) then
+    raise exception 'Existing messages need school, author, and sender mappings before scoped access can be enabled';
+  end if;
+  alter table public.messages alter column school_id set not null;
+  alter table public.messages alter column author_id set not null;
+  alter table public.messages alter column sender_name set not null;
+end $$;
 
 create index if not exists students_school_class_idx on public.students(school_id, class_id);
 create index if not exists assessments_student_timestamp_idx on public.assessments(student_id, timestamp);
@@ -226,6 +257,17 @@ alter table public.registration_codes enable row level security;
 alter table public.assessments enable row level security;
 alter table public.messages enable row level security;
 
+-- Legacy policies on the two pre-existing tables may be permissive. Remove
+-- them before installing the reviewed school-scoped policies below.
+do $$ declare existing_policy record; begin
+  for existing_policy in
+    select tablename, policyname from pg_policies
+    where schemaname = 'public' and tablename in ('students', 'messages')
+  loop
+    execute format('drop policy if exists %I on public.%I', existing_policy.policyname, existing_policy.tablename);
+  end loop;
+end $$;
+
 drop policy if exists schools_read_member on public.schools;
 create policy schools_read_member on public.schools for select to authenticated using (id = public.current_school_id());
 
@@ -296,6 +338,11 @@ create policy messages_insert_class_member on public.messages for insert to auth
 with check (school_id = public.current_school_id() and author_id = auth.uid() and public.can_access_class(class_id));
 
 revoke all on function public.complete_account_registration(text, text, uuid, text, uuid) from public, anon, authenticated;
+revoke all on function public.current_role() from public, anon;
+revoke all on function public.current_school_id() from public, anon;
+revoke all on function public.current_student_id() from public, anon;
+revoke all on function public.can_access_student(uuid) from public, anon;
+revoke all on function public.can_access_class(text) from public, anon;
 grant execute on function public.complete_account_registration(text, text, uuid, text, uuid) to service_role;
 grant execute on function public.current_role() to authenticated, service_role;
 grant execute on function public.current_school_id() to authenticated, service_role;
@@ -303,9 +350,7 @@ grant execute on function public.current_student_id() to authenticated, service_
 grant execute on function public.can_access_student(uuid) to authenticated, service_role;
 grant execute on function public.can_access_class(text) to authenticated, service_role;
 
+revoke all on public.schools, public.students, public.school_members, public.teacher_classes, public.parent_students, public.registration_codes, public.assessments, public.messages from anon, public;
 grant select on public.schools, public.school_members, public.students, public.teacher_classes, public.parent_students, public.assessments, public.messages to authenticated;
-grant insert, update, delete on public.students, public.assessments to authenticated;
-grant insert on public.messages to authenticated;
-grant insert, update on public.registration_codes to authenticated;
-grant insert, update, delete on public.teacher_classes to authenticated;
+grant insert on public.assessments, public.messages to authenticated;
 grant all on all tables in schema public to service_role;
